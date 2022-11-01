@@ -1,0 +1,15 @@
+Remove variables
+
+Makefile
+
+Write decision' to take a bitstr
+
+Define initial in Alphabet
+
+Define the initial state
+
+Define U
+
+Define TM^A, oracle
+
+Composition lemma
