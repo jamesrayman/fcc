@@ -32,7 +32,7 @@ Section RunTuring.
   Local Definition blank_state := blank state_count.
 
   Variable m: machine.
-  Variable initial: state.
+  Variable initial: state = sym_0 state_count.
   Variable program input: tape.
   Local Definition Initial: State := (initial, program, input).
   Local Definition m_step := step state_count symbol_count m.
@@ -53,11 +53,11 @@ Section RunTuring.
   Inductive decision: bool -> Prop :=
   | Rejects: tm_halts -> (
       forall (l r: tape) (s: state),
-        tm_halted (s, l, r) -> m_steps Initial (s, l, r) -> alph_to_nat (head r) = 0
+        tm_halted (s, l, r) -> m_steps Initial (s, l, r) -> sym_to_nat (head r) = 0
     ) -> decision false
   | Accepts: tm_halts -> (
       exists (l r: tape) (s: state),
-        tm_halted (s, l, r) /\ m_steps Initial (s, l, r) /\ alph_to_nat (head r) <> 0
+        tm_halted (s, l, r) /\ m_steps Initial (s, l, r) /\ sym_to_nat (head r) <> 0
     ) -> decision true.
 
   Fixpoint simulate (s: State) (n: nat).

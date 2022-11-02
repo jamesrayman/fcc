@@ -4,17 +4,14 @@ Import ListNotations.
 Section Turing.
   Variable state_count symbol_count: positive.
 
-  Definition state := alphabet state_count.
-  Definition symbol := alphabet symbol_count.
+  Local Definition state := alphabet state_count.
+  Local Definition symbol := alphabet symbol_count.
 
-  Definition nat_to_sym := nat_to_alph symbol_count.
-  Definition nat_to_state := nat_to_alph state_count.
-
-  Definition blank := nat_to_sym 0 (pos_gt_zero _).
+  Local Definition blank := sym_0 symbol_count.
 
   Inductive direction :=
-    | Left
-    | Right.
+  | Left
+  | Right.
 
   Definition machine :=
     state -> symbol -> state -> symbol -> direction -> bool.
@@ -35,14 +32,14 @@ Section Turing.
   Definition State: Set := state * tape * tape.
 
   Inductive step: machine -> State -> State -> Prop :=
-    | stepLeft: forall (m: machine) (l r l' r': tape) (s s': state),
-        m s (head r) s' (head (tail r')) Left = true ->
-        l' = tail l ->
-        r' = cons (head l) (cons (head (tail r')) (tail r)) ->
-        step m (s, l, r) (s', l', r')
-    | stepRight: forall (m: machine) (l r l' r': tape) (s s': state),
-        m s (head r) s' (head l') Right = true ->
-        l' = cons (head l') l ->
-        r' = tail r ->
-        step m (s, l, r) (s', l', r').
+  | stepLeft: forall (m: machine) (l r l' r': tape) (s s': state),
+      m s (head r) s' (head (tail r')) Left = true ->
+      l' = tail l ->
+      r' = cons (head l) (cons (head (tail r')) (tail r)) ->
+      step m (s, l, r) (s', l', r')
+  | stepRight: forall (m: machine) (l r l' r': tape) (s s': state),
+      m s (head r) s' (head l') Right = true ->
+      l' = cons (head l') l ->
+      r' = tail r ->
+      step m (s, l, r) (s', l', r').
 End Turing.
