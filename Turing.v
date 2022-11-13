@@ -2,7 +2,7 @@ Require Import Arith List Alphabet.
 Import ListNotations.
 
 Section Turing.
-  Variable state_count symbol_count: positive.
+  Context {state_count symbol_count: positive}.
 
   Local Definition state := alphabet state_count.
   Local Definition symbol := alphabet symbol_count.
@@ -13,33 +13,69 @@ Section Turing.
   | Left
   | Right.
 
-  Definition machine :=
-    state -> symbol -> state -> symbol -> direction -> bool.
-  Definition tape := list (alphabet symbol_count).
+  Definition turing_machine (stc symc: positive) :=
+    alphabet stc -> alphabet symc -> alphabet stc -> alphabet symc -> direction -> bool.
+  Local Definition machine := turing_machine state_count symbol_count.
+  Definition tape := str symbol_count.
 
-  Definition head (t: tape): symbol :=
-    match t with
-    | cons s rest => s
-    | nil => blank
-    end.
+  Definition head (t: tape): symbol := hd blank t.
 
-  Definition tail (t: tape): tape :=
-    match t with
-    | cons s rest => rest
-    | nil => nil
-    end.
+  Definition tail (t: tape): tape := tl t.
 
   Definition State: Set := state * tape * tape.
 
+  Definition go_left (s: State) (sym: symbol) :=
+    let (st'l, r) := s in let (st, l) := st'l in
+    (st, tail l, cons (head r) (cons sym (tail r))).
+
+  Definition go_right (s: State) (sym: symbol) :=
+    let (st'l, r) := s in let (st, l) := st'l in
+    (st, cons sym l, tail r).
+
+  Lemma go_left_sym: forall (s: State) (sym: symbol) (s': state) (l r: tape),
+    go_left s sym = (s', l, r) -> sym = head (tail r).
+  Proof.
+    intros.
+    unfold go_left in H.
+    destruct s in H.
+    destruct p in H.
+    inversion H. subst. auto.
+  Qed.
+
+  Lemma go_left_state: forall (sym: symbol) (s s': state) (l r l' r': tape),
+    go_left (s, l, r) sym = (s', l', r') -> s = s'.
+  Proof.
+    intros.
+    unfold go_left in H.
+    inversion H. subst. auto.
+  Qed.
+
+  Lemma go_right_sym: forall (s: State) (sym: symbol) (s': state) (l r: tape),
+    go_right s sym = (s', l, r) -> sym = head l.
+  Proof.
+    intros.
+    unfold go_right in H.
+    destruct s in H.
+    destruct p in H.
+    inversion H. subst. auto.
+  Qed.
+
+  Lemma go_right_state: forall (sym: symbol) (s s': state) (l r l' r': tape),
+    go_right (s, l, r) sym = (s', l', r') -> s = s'.
+  Proof.
+    intros.
+    unfold go_left in H.
+    inversion H. subst. auto.
+  Qed.
+
+  Definition go_d (d: direction) :=
+    match d with
+    | Left => go_left
+    | Right => go_right
+    end.
+
   Inductive step: machine -> State -> State -> Prop :=
-  | stepLeft: forall (m: machine) (l r l' r': tape) (s s': state),
-      m s (head r) s' (head (tail r')) Left = true ->
-      l' = tail l ->
-      r' = cons (head l) (cons (head (tail r')) (tail r)) ->
-      step m (s, l, r) (s', l', r')
-  | stepRight: forall (m: machine) (l r l' r': tape) (s s': state),
-      m s (head r) s' (head l') Right = true ->
-      l' = cons (head l') l ->
-      r' = tail r ->
-      step m (s, l, r) (s', l', r').
+  | stepCons: forall (m: machine) (l r: tape) (s s': state) (sym': symbol) (d: direction),
+      m s (head r) s' sym' d = true ->
+      step m (s, l, r) (go_d d (s', l, r) sym').
 End Turing.

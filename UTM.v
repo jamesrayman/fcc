@@ -8,6 +8,7 @@ Require Import Turing Run Alphabet Language.
      While
      End
      Toggle
+     EOF
  *)
 
 Section UniversalTM.

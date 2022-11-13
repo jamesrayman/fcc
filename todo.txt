@@ -1,6 +1,16 @@
-Rewrite Alphabet
-Remove variables
 Write decision' to take a bitstr
+Examples
+Determinism
 Define U
+Define multi-tape TM (2 and up)
 Define TM^A, oracle
 Composition lemma
+No-input lemma
+
+Define 0-HALT
+Define ALL-HALT
+
+Enumerate decidable languages as g_i
+TM^0-HALT can compute g_i
+
+Diagonalize

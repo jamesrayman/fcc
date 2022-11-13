@@ -1,4 +1,4 @@
-Require Import Arith List.
+Require Import Arith List Lia.
 Import ListNotations.
 
 Section Alphabet.
@@ -31,8 +31,19 @@ Section Alphabet.
     exact sym_i0.
   Defined.
 
+  Definition str (n: positive) := list (alphabet n).
+
   Definition sym_0 (n: positive) := nat_to_sym n 0 (pos_gt_zero n).
 
+  Lemma sym_dec (m: positive) (n: nat): {n < atl_to_nat m} + {n >= atl_to_nat m}.
+  Proof.
+    destruct (n ?= atl_to_nat m) eqn:H.
+    - right. apply Nat.compare_eq_iff in H. lia.
+    - left. apply Nat.compare_lt_iff in H. lia.
+    - right. apply Nat.compare_gt_iff in H. lia.
+  Qed.
+
+  (*
   Local Fixpoint all_syms' (n: positive) (i: nat) (prf: i < atl_to_nat n): list (alphabet n).
     destruct i.
     - exact (cons (nat_to_sym n 0 prf) nil).
@@ -52,10 +63,31 @@ Section Alphabet.
     exact (all_syms' n (Nat.pred (atl_to_nat n)) Hn).
   Defined.
 
-  Lemma five_gt_one: 5 >= 1. Proof. auto 10. Qed.
-
-  Theorem sym_in_all_syms: forall (n: positive) (a: alphabet n), .
+  Theorem sym_in_all_syms': forall (n: positive) (m k: nat) (prf: m < atl_to_nat n),
+    k <= m -> k = sym_to_nat (nth k (all_syms' n m prf) (sym_0 n)).
   Proof.
+    intros.
+    revert H.
+    revert k.
+    induction m.
+    - intros.
+      assert (k = 0) by lia.
+      subst.
+      auto.
+    - intros.
+      assert (prf' := prf).
+      apply Nat.lt_succ_l in prf'.
+      unfold all_syms'.
   Qed.
+
+  Theorem sym_in_all_syms: forall (n: positive) (a: alphabet n),
+    sym_to_nat a = sym_to_nat (nth (sym_to_nat a) (all_syms n) (sym_0 n)).
+  Proof.
+    intros.
+    destruct a as [i prf] eqn:Ha.
+    simpl.
+    unfold all_syms.
+  Qed.
+   *)
 
 End Alphabet.
