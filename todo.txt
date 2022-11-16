@@ -1,10 +1,25 @@
-Write decision' to take a bitstr
-Examples
-Determinism
+Use records instead of products
+
+Clean up Turing.v
+Accepting state based on state
+
+Decidability for models of computation
+
+1-way infinite tape
+8 symbols
+
 Define U
+
+[program][state][1-way tape]
+
+Homomorphism lemma
+
+
+Write the skeleton, prove everything with Admitted.
+Examples
 Define multi-tape TM (2 and up)
 Define TM^A, oracle
-Composition lemma
+Composition lemma: decidable A -> TM simulates TM^A
 No-input lemma
 
 Define 0-HALT

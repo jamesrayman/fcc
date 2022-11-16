@@ -10,6 +10,9 @@ Section Alphabet.
     exact atl_i0.
   Defined.
 
+  Axiom atl_extensionality: forall (n: nat) (a b: at_least n),
+    a = b <-> atl_to_nat a = atl_to_nat b.
+
   Definition nat_to_atl (n m: nat) (prf: m >= n): at_least n :=
     {| atl_i := m; atl_prf := prf |}.
 
@@ -31,6 +34,9 @@ Section Alphabet.
     exact sym_i0.
   Defined.
 
+  Axiom sym_extensionality: forall (n: positive) (a b: alphabet n),
+    a = b <-> sym_to_nat a = sym_to_nat b.
+
   Definition str (n: positive) := list (alphabet n).
 
   Definition sym_0 (n: positive) := nat_to_sym n 0 (pos_gt_zero n).
@@ -43,51 +49,71 @@ Section Alphabet.
     - right. apply Nat.compare_gt_iff in H. lia.
   Qed.
 
-  (*
-  Local Fixpoint all_syms' (n: positive) (i: nat) (prf: i < atl_to_nat n): list (alphabet n).
-    destruct i.
-    - exact (cons (nat_to_sym n 0 prf) nil).
-    - remember (nat_to_sym n (S i) prf) as m.
-      assert (prf' := prf).
-      apply Nat.lt_succ_l in prf'.
-      specialize all_syms' with n i.
-      exact (all_syms' prf' ++ [m]).
-  Defined.
+  Fixpoint iota (n: nat): list nat :=
+    match n with
+    | 0 => nil
+    | S m => (iota m) ++ [m]
+    end.
+
+  Lemma nat_in_iota: forall (n m: nat), In m (iota n) <-> m < n.
+  Proof.
+    split; revert m; induction n; intros.
+    - simpl in H. contradiction.
+    - unfold iota in H.
+      fold iota in H.
+      destruct (Nat.eq_dec m n).
+      + lia.
+      + apply in_app_or in H. destruct H; intuition.
+        simpl in H. intuition.
+        symmetry in H0.
+        apply n0 in H0.
+        contradiction.
+    - lia.
+    - unfold iota.
+      fold iota.
+      destruct (Nat.eq_dec m n); apply in_or_app.
+      + right. simpl. auto.
+      + left. apply IHn. lia.
+  Qed.
+
+  Lemma length_iota: forall (n: nat), length (iota n) = n.
+  Proof.
+    induction n; intuition.
+    unfold iota.
+    fold iota.
+    rewrite List.app_length.
+    rewrite IHn.
+    simpl. lia.
+  Qed.
 
   Definition all_syms (n: positive): list (alphabet n).
-    remember (Nat.lt_pred_l (atl_to_nat n)) as H.
-    remember (Nat.lt_neq 0 (atl_to_nat n) (pos_gt_zero n)) as Hn.
-    clear HeqHn.
-    apply Nat.neq_sym in Hn.
-    apply H in Hn.
-    exact (all_syms' n (Nat.pred (atl_to_nat n)) Hn).
+    apply map with (A := nat).
+    - intro k.
+      destruct (sym_dec n k).
+      + exact (nat_to_sym n k l).
+      + exact (sym_0 n).
+    - exact (iota (atl_to_nat n)).
   Defined.
 
-  Theorem sym_in_all_syms': forall (n: positive) (m k: nat) (prf: m < atl_to_nat n),
-    k <= m -> k = sym_to_nat (nth k (all_syms' n m prf) (sym_0 n)).
+  Lemma length_all_syms: forall (n: positive), length (all_syms n) = atl_to_nat n.
   Proof.
-    intros.
-    revert H.
-    revert k.
-    induction m.
-    - intros.
-      assert (k = 0) by lia.
-      subst.
-      auto.
-    - intros.
-      assert (prf' := prf).
-      apply Nat.lt_succ_l in prf'.
-      unfold all_syms'.
+    destruct n. unfold all_syms. simpl.
+    rewrite List.map_length.
+    rewrite length_iota. auto.
   Qed.
 
-  Theorem sym_in_all_syms: forall (n: positive) (a: alphabet n),
-    sym_to_nat a = sym_to_nat (nth (sym_to_nat a) (all_syms n) (sym_0 n)).
+  Lemma all_syms_correct (n: positive) (sym: alphabet n): In sym (all_syms n).
   Proof.
-    intros.
-    destruct a as [i prf] eqn:Ha.
-    simpl.
+    destruct sym eqn:H. rewrite <- H.
     unfold all_syms.
+    apply in_map_iff.
+    exists sym_i0.
+    split.
+    - destruct (sym_dec n sym_i0).
+      + apply sym_extensionality.
+        rewrite H.
+        simpl. auto.
+      + lia.
+    - apply nat_in_iota. auto.
   Qed.
-   *)
-
 End Alphabet.
