@@ -1,4 +1,4 @@
-Require Import List Relations Arith Alphabet Bool Language.
+Require Import List Relations Arith Alphabet Bool Language Lia.
 
 Section Computation.
   Context {state: Type}.
@@ -16,34 +16,85 @@ Section Computation.
   Inductive steps: relation state :=
   | stepsRefl: forall (s: state), steps s s
   | stepsOnce: forall (s s' s'': state),
-      steps s s' /\ step_rel s' s'' -> steps s s''.
+      steps s s' -> step_rel s' s'' -> steps s s''.
+
+  Lemma steps_transitive: forall (s s' s'': state),
+    steps s s' -> steps s' s'' -> steps s s''.
+  Proof.
+    intros.
+    induction H0; auto.
+    apply stepsOnce with (s' := s'); auto.
+  Qed.
+
+  Lemma first_step: forall (s s': state),
+    steps s s' -> s = s' \/ exists s'', step_rel s s''.
+  Proof.
+    clear accepting_state.
+    intros.
+    induction H.
+    - intuition.
+    - destruct IHsteps.
+      + subst.
+        eauto.
+      + eauto.
+  Qed.
 
   Definition halted (s: state) := forall (s': state), ~step_rel s s'.
 
   Definition runtime_f (initial: state) (f: state -> nat) :=
     forall (s s': state), steps initial s -> step_rel s s' -> f s > f s'.
 
+  Lemma runtime_f_monotone:
+    forall f (s s': state), steps s s' -> runtime_f s f -> f s >= f s'.
+  Proof.
+    intros.
+    unfold runtime_f in H0.
+    induction H.
+    - auto.
+    - remember (IHsteps H0).
+      enough (f s' > f s'').
+      + lia.
+      + apply H0; auto.
+  Qed.
+
+  Lemma runtime_f_monotone':
+    forall f (s s': state), steps s s' -> runtime_f s f -> runtime_f s' f.
+  Proof.
+    unfold runtime_f.
+    intros.
+    apply H0; auto.
+    apply steps_transitive with (s' := s'); auto.
+  Qed.
+
   Definition halts (initial: state) :=
-    exists (f: state -> nat), runtime_f initial f.
+    exists f, runtime_f initial f.
+
+  Lemma halts_steps_monotone:
+    forall (s s': state), steps s s' -> halts s -> halts s'.
+  Proof.
+    intros.
+    unfold halts in *.
+    destruct H0 as [f].
+    exists f.
+    unfold runtime_f in *.
+    induction H.
+    - exact H0.
+    - intros.
+      apply H0; auto.
+      apply steps_transitive with (s' := s'); auto.
+      apply steps_transitive with (s' := s''); auto.
+      apply stepsOnce with (s' := s'); auto.
+      constructor.
+  Qed.
 
   Definition halts_within (initial: state) (n: nat) :=
     exists (f: state -> nat), runtime_f initial f /\ f initial = n.
-
-  Lemma halts_halts_within:
-    forall (initial: state), halts initial -> exists (n: nat), halts_within initial n.
-  Proof.
-    intros.
-    destruct H as [f].
-    exists (f initial).
-    unfold halts_within.
-    exists f.
-    auto.
-  Qed.
 
   Lemma halts_within_monotone:
     forall (initial: state) (n m: nat), n < m ->
     halts_within initial n -> halts_within initial m.
   Proof.
+    clear accepting_state.
     intros.
     destruct H0 as [f].
     destruct H0.
@@ -55,6 +106,73 @@ Section Computation.
     unfold runtime_f.
     rewrite H1.
     intuition.
+  Qed.
+
+  Lemma halts_within_monotone':
+    forall (initial: state) (n m: nat), n <= m ->
+    halts_within initial n -> halts_within initial m.
+  Proof.
+    intros.
+    apply Nat.lt_eq_cases in H.
+    destruct H.
+    - eapply halts_within_monotone; eauto.
+    - subst. auto.
+  Qed.
+
+  Lemma halts_within_step_monotone:
+    forall (s s': state) (t : nat),
+    step_rel s s' -> halts_within s (S t) -> halts_within s' t.
+  Proof.
+    intros.
+    unfold halts_within in H0.
+    destruct H0 as [f].
+    destruct H0.
+    apply halts_within_monotone' with (n := f s').
+    - unfold runtime_f in H0.
+      specialize H0 with s s'.
+      remember (H0 (stepsRefl s) H).
+      lia.
+    - unfold halts_within.
+      exists f. intuition.
+      apply (runtime_f_monotone' f s s'); repeat econstructor; auto.
+  Qed.
+
+  Lemma halts_within_steps_monotone:
+    forall (s s': state) (t : nat),
+    steps s s' -> halts_within s t -> halts_within s' t.
+  Proof.
+    intros.
+    unfold halts_within in H0.
+    destruct H0 as [f].
+    destruct H0.
+    assert (halts_within s' (f s')).
+    - exists f.
+      unfold runtime_f in *.
+      intuition.
+      apply H0; intuition.
+      apply steps_transitive with (s' := s'); auto.
+    - destruct (Nat.eq_dec t (f s')).
+      + exists f.
+        unfold runtime_f.
+        intuition.
+        apply H0; intuition.
+        apply steps_transitive with (s' := s'); auto.
+      + apply halts_within_monotone with (n := f s'); auto.
+        rewrite <- H1.
+        rewrite <- H1 in n.
+        remember (runtime_f_monotone f s s' H H0).
+        lia.
+  Qed.
+
+  Lemma halts_halts_within:
+    forall (initial: state), halts initial -> exists (n: nat), halts_within initial n.
+  Proof.
+    intros.
+    destruct H as [f].
+    exists (f initial).
+    unfold halts_within.
+    exists f.
+    auto.
   Qed.
 
   Definition runtime (initial: state) (t: nat) :=
@@ -79,21 +197,59 @@ Section Computation.
       exact (H1 t' Hc H0).
   Qed.
 
-  Lemma runtime_exists:
-    forall (initial: state), halts initial -> exists (t: nat), runtime initial t.
+  Lemma runtime_zero_halted:
+    forall (s: state),
+    halted s <-> runtime s 0.
   Proof.
-    intros.
-    apply halts_halts_within in H.
-    destruct H as [t].
+    unfold halted.
     unfold runtime.
-    induction t.
-    - exists 0.
+    unfold halts_within.
+    unfold runtime_f.
+    intuition.
+    - exists (fun x => 0).
       intuition.
-      inversion H0.
-    - 
+      exfalso.
+      remember (first_step s s0 H0) as Ht.
+      destruct Ht.
+      + subst.
+        eapply H. eauto.
+      + destruct e.
+        eapply H. eauto.
+    - lia.
+    - destruct H0 as [f].
+      destruct H0.
+      remember (H0 s s' (stepsRefl s) H).
+      lia.
   Qed.
 
-  Lemma runtime_monotone:
+  Lemma runtime_step_monotone:
+    forall (s s': state) (t t': nat),
+    runtime s t -> runtime s' t' -> step_rel s s' -> t > t'.
+  Proof.
+    intros.
+    unfold runtime in H, H0.
+    destruct H, H0.
+    destruct t.
+    - assert (runtime s 0).
+      + unfold runtime. intuition.
+      + apply runtime_zero_halted in H4.
+        exfalso.
+        unfold halted in H4.
+        apply (H4 s').
+        auto.
+    - remember (halts_within_step_monotone s s' t H1 H).
+      destruct (S t ?= t') eqn: Hc.
+      + apply Nat.compare_eq_iff in Hc.
+        exfalso.
+        assert (t < t') by lia.
+        exact (H3 t H4 h).
+      + apply Nat.compare_lt_iff in Hc.
+        exfalso.
+        assert (t < t') by lia.
+        exact (H3 t H4 h).
+      + apply Nat.compare_gt_iff in Hc.
+        auto.
+  Qed.
 
   Definition halts' (input: bitstr) := halts (encode_input input).
 
@@ -127,35 +283,129 @@ Section Computation.
     apply not_accept_reject.
   Qed.
 
-  Definition next_steps_f (f: state -> list state) :=
-    forall (s s': state), step_rel s s' <-> In s' (f s).
+  Definition next_steps_exists :=
+    { f: state -> list state | forall (s s': state), step_rel s s' <-> In s' (f s)}.
 
-  Lemma next_steps_f_halt_dec:
-    forall f, next_steps_f f -> forall (s: state), {halted s} + {~halted s}.
+  Lemma runtime_tight:
+    next_steps_exists ->
+    forall (s: state) (t: nat),
+    runtime s (S t) -> exists (s': state), step_rel s s' /\ runtime s' t.
   Proof.
-    unfold next_steps_f.
     intros.
-    unfold halted.
-    destruct (f s) eqn: Hfs.
-    - left. intros.
-      specialize H with s s'.
-      rewrite Hfs in H.
-      intuition.
-    - right.
-      intro.
-      specialize H0 with s0.
-      specialize H with s s0.
-      rewrite Hfs in H.
-      intuition.
-  Qed.
+    destruct X as [f Hf].
+    remember (Hf s) as Hfs. clear HeqHfs Hf.
+  Admitted.
 
-  Theorem next_steps_comp_halt_decision:
-    forall f, next_steps_f f ->
-    forall (init: state), halts init -> {decision init false} + {decision init true}.
+  Local Definition inductive_runtime_f (s: state) (t: nat)
+    (H: forall (s': state), {halts_within s t} + {~halts_within s t}): state -> nat.
+    intro s'.
+    destruct (H s').
+    - unfold halts_within in h.
+      admit.
+    - exact (S t).
+  Defined.
+
+    (H: forall s' : state, step_rel s s' -> halts_within s' t) (s'': state): nat.
+
+
+
+  Local Lemma halts_within_comp:
+    next_steps_exists ->
+    forall (s: state) (t t': nat), t < t' -> {halts_within s t} + {~halts_within s t}.
   Proof.
-    unfold next_steps_f.
-    unfold halts.
     intros.
+    destruct X as [f Hf].
+    revert s.
+    revert H.
+    revert t.
+    induction t'; intros.
+    - exfalso. inversion H.
+    - destruct t'.
+      + assert (t = 0) by lia.
+        subst.
+        destruct (f s) eqn:Hl.
+        * left.
+          apply runtime_zero_halted.
+          unfold halted.
+          intros.
+          specialize Hf with s s'.
+          intro.
+          rewrite Hl in Hf.
+          destruct Hf.
+          apply in_nil in H1; auto.
+        * right.
+          intro.
+          unfold halts_within in H0.
+          destruct H0 as [f'].
+          destruct H0.
+          unfold runtime_f in H0.
+          specialize Hf with s s0.
+          destruct Hf.
+          rewrite Hl in H3.
+          remember (H3 (in_eq s0 l)).
+          remember (H0 s s0 (stepsRefl s) s1).
+          lia.
+      + assert (forall (t: nat),
+          t < S t' -> forall s: state, {~halts_within s t} + {~~halts_within s t}
+        ).
+          intros.
+          specialize IHt' with t0 s0.
+          apply IHt' in H0.
+          destruct H0; intuition.
+        destruct (Nat.eq_dec t (S t')).
+        * subst. clear H.
+          assert (t' < S t') by lia.
+          remember (Exists_dec (fun s' => ~halts_within s' t') (f s) (X t' H)).
+          clear Heqs0 X.
+          destruct s0.
+          -- right. intro.
+             apply Exists_exists in e.
+             destruct e.
+             destruct H1.
+             specialize Hf with s x.
+             destruct Hf.
+             remember (H4 H1).
+             exact (H2 (halts_within_step_monotone s x t' s0 H0)).
+          -- left.
+             apply <- Forall_Exists_neg in n.
+             simpl in n.
+             remember (@Forall_forall state (fun x : state => ~ ~ halts_within x t') (f s)).
+             destruct i.
+             remember (n0 n) as H1.
+             clear HeqH1 Heqi f0 n0 n.
+             assert (forall s': state, step_rel s s' -> halts_within s' t').
+             ++ intros.
+                specialize Hf with s s'.
+                specialize IHt' with t' s'.
+                specialize H1 with s'.
+                apply IHt' in H.
+                apply Hf in H0.
+                apply H1 in H0.
+                destruct H; intuition.
+             ++ 
+        * assert (t < S t') by lia.
+          exact (IHt' t H0 s).
+  Admitted.
+
+  Local Lemma runtime_exists':
+    next_steps_exists ->
+    forall (t: nat) (initial: state),
+    halts_within initial t -> exists (t': nat), runtime initial t'.
+  Proof.
+    intros.
+    induction t.
+    - exists 0.
+      unfold runtime.
+      intuition.
+      lia.
+    - assert (t < S t) by lia.
+      destruct (halts_within_comp X initial t (S t) H0).
+      + exact (IHt h).
+      + exists (S t).
+        unfold runtime.
+        intuition.
+        assert (t' <= t) by lia.
+        exact (n (halts_within_monotone' initial t' t H3 H2)).
   Qed.
 
   Definition decides (l: language): Prop :=

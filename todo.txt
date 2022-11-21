@@ -1,9 +1,10 @@
+Redefine halts and halts within
 Use records instead of products
+
+Simulation
 
 Clean up Turing.v
 Accepting state based on state
-
-Decidability for models of computation
 
 1-way infinite tape
 8 symbols
