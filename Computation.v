@@ -9,14 +9,15 @@ Section Computation.
   Definition deterministic :=
     forall (s s' s'': state), step_rel s s' -> step_rel s s'' -> s' = s''.
 
-  Definition decision_model: Type := (relation state) * (state -> Prop) * (bitstr -> state).
-  Local Definition dm := (step_rel, accepting_state, encode_input).
+  Record decision_model :=
+    { dm_step: relation state; dm_acc: state -> Prop; dm_enc: bitstr -> state }.
   Definition dm_class := decision_model -> Prop.
 
   Inductive steps: relation state :=
   | stepsRefl: forall (s: state), steps s s
   | stepsOnce: forall (s s' s'': state),
       steps s s' -> step_rel s' s'' -> steps s s''.
+
 
   Lemma steps_transitive: forall (s s' s'': state),
     steps s s' -> steps s' s'' -> steps s s''.
@@ -89,6 +90,10 @@ Section Computation.
 
   Definition halts_within (initial: state) (n: nat) :=
     exists (f: state -> nat), runtime_f initial f /\ f initial = n.
+
+  Axiom halts_within_constructible:
+    forall (initial: state) (n: nat), halts_within initial n ->
+    { f | runtime_f initial f /\ f initial = n }.
 
   Lemma halts_within_monotone:
     forall (initial: state) (n m: nat), n < m ->
@@ -297,17 +302,33 @@ Section Computation.
   Admitted.
 
   Local Definition inductive_runtime_f (s: state) (t: nat)
-    (H: forall (s': state), {halts_within s t} + {~halts_within s t}): state -> nat.
+    (H: forall (s': state), {halts_within s' t} + {~halts_within s' t}): state -> nat.
     intro s'.
     destruct (H s').
-    - unfold halts_within in h.
-      admit.
+    - apply halts_within_constructible in h.
+      destruct h as [f].
+      exact (f s').
     - exact (S t).
   Defined.
 
-    (H: forall s' : state, step_rel s s' -> halts_within s' t) (s'': state): nat.
+  Local Lemma inductive_runtime_f_correct:
+    forall (s: state) (t: nat)
+    (H: forall (s': state), {halts_within s' t} + {~halts_within s' t})
+    (H': forall s' : state, step_rel s s' -> halts_within s' t),
+    runtime_f s (inductive_runtime_f s t H).
+  Proof.
+    intros.
+    unfold runtime_f.
+    intros.
+    unfold inductive_runtime_f.
+    apply first_step in H0.
+    destruct H0, (H s0), (H s'); repeat destruct halts_within_constructible.
+    - destruct a, a0.
+      unfold runtime_f in H2.
+      specialize H2 with s0 s'.
+      remember (H2 (stepsRefl s0) H1).
 
-
+  Admitted.
 
   Local Lemma halts_within_comp:
     next_steps_exists ->
@@ -382,7 +403,7 @@ Section Computation.
                 apply Hf in H0.
                 apply H1 in H0.
                 destruct H; intuition.
-             ++ 
+             ++ admit.
         * assert (t < S t') by lia.
           exact (IHt' t H0 s).
   Admitted.
@@ -412,14 +433,48 @@ Section Computation.
     forall (w: bitstr), halts' w /\ (accepts w <-> l w).
 End Computation.
 
+
 Section Simulation.
+  Definition dm_steps {state: Type} (dm: @decision_model state) := steps (dm_step dm).
+  Definition dm_halts {state: Type} (dm: @decision_model state) :=
+    halts' (dm_step dm) (dm_enc dm).
+
   Definition decidable {state: Type} (c: @dm_class state) (l: language) :=
     exists (dm: decision_model), c dm /\
-    let (sr'as, encode_input) := dm in
-    let (step_rel, accepting_state) := sr'as in
+    let (step_rel, accepting_state, encode_input) := dm in
     decides step_rel accepting_state encode_input l.
 
   Definition simulates {state: Type} (c c': @dm_class state) :=
     forall (l: language), decidable c' l -> decidable c l.
+
+  Definition homomorphism {state state': Type}
+    (dm: @decision_model state) (dm': @decision_model state') (f: state -> state') :=
+    (forall (w: bitstr), f (dm_enc dm w) = dm_enc dm' w) /\
+    (forall (s: state), dm_acc dm s <-> dm_acc dm' (f s)) /\
+    (forall (s s': state), dm_steps dm s s' -> dm_steps dm' (f s) (f s')).
+
+  Definition homomorphic {state state': Type}
+    (dm: @decision_model state) (dm': @decision_model state') :=
+    exists f, homomorphism dm dm' f.
+
+  Lemma homomorphism_halts {state state': Type}
+    (dm: @decision_model state) (dm': @decision_model state'):
+    homomorphic dm dm' -> forall w, dm_halts dm' w -> dm_halts dm w.
+  Proof.
+    intros.
+    destruct dm as [step acc enc].
+    destruct dm' as [step' acc' enc'].
+    unfold dm_halts in *.
+    unfold homomorphic in H.
+    destruct H as [f].
+    destruct H.
+    destruct H1.
+    unfold dm_steps in H2.
+    simpl in *.
+    unfold halts' in *.
+    unfold halts in *.
+    destruct H0 as [rf].
+    unfold runtime_f in *.
+  Qed.
 
 End Simulation.
