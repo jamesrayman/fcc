@@ -17,7 +17,7 @@ clean :
 	rm -f $(vo) $(vok) $(vos) $(glob)
 
 
-Language.vo : Alphabet.vo
-Computation.vo : Alphabet.vo Language.vo
-Turing.vo : Alphabet.vo Computation.vo
-UTM.vo: Alphabet.vo Turing.vo Computation.vo
+Function.vo : Alphabet.vo
+Computation.vo : Alphabet.vo Function.vo
+Turing.vo : Alphabet.vo Computation.vo Function.vo
+LIMP.vo : Alphabet.vo Computation.vo Function.vo

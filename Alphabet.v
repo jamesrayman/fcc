@@ -49,6 +49,18 @@ Section Alphabet.
     - right. apply Nat.compare_gt_iff in H. lia.
   Qed.
 
+  Definition sym_1 (n: positive): alphabet n.
+    destruct (sym_dec n 1).
+    - exact (nat_to_sym n 1 l).
+    - exact (sym_0 n).
+  Defined.
+
+  Definition is_sym_0 {n: positive} (a: alphabet n): bool.
+    destruct (Nat.eq_dec 0 (sym_to_nat a)).
+    - exact true.
+    - exact false.
+  Defined.
+
   Fixpoint iota (n: nat): list nat :=
     match n with
     | 0 => nil
