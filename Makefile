@@ -20,4 +20,5 @@ clean :
 Function.vo : Alphabet.vo
 Computation.vo : Alphabet.vo Function.vo
 Turing.vo : Alphabet.vo Computation.vo Function.vo
-LIMP.vo : Alphabet.vo Computation.vo Function.vo
+IMP.vo : Alphabet.vo Computation.vo Function.vo
+Util.vo: IMP.vo

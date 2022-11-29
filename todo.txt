@@ -1,21 +1,5 @@
 vim: nospell
 
-bitstr to nat
-
-bitstr to LIMP
-
-LIMP: list IMP
-NOP
-LDI rt n
-ADD rt ra rb
-SUB rt ra rb
-MUL rt ra rb
-DIV rt ra rb
-MOD rt ra rb
-EQ rt ra rb
-JNE i rc
-RET ra
-
 CIMP: IMP with oracles
 CALL f rt ra
 
@@ -26,18 +10,7 @@ EIMP: IMP with expressions
 IMP: discussed in class
 
 
-1-way infinite tape
-8 symbols
-
-Define U
-
-[program][state][1-way tape]
-
-
 Write the skeleton, prove everything with Admitted.
-
-Define 0-HALT
-Define ALL-HALT
 
 0-HALT implies SIM
 
