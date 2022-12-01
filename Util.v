@@ -123,19 +123,14 @@ Definition read_instr (w: bitstr): L_instr * bitstr :=
   | false :: true :: false :: true :: w' =>
       let (rt, w'') := read_n w' in let (ra, w''') := read_n w'' in
       let (rb, w'''') := read_n w''' in (EQ rt ra rb, w'''')
-  | true :: true :: true :: false :: w' =>
-      let (i, w'') := read_n w' in let (rc, w''') := read_n w'' in (JNE i rc, w''')
   | true :: false :: true :: false :: w' =>
-      let (i, w'') := read_n w' in let (rc, w''') := read_n w'' in (JRNE i rc, w''')
+      let (i, w'') := read_n w' in let (rc, w''') := read_n w'' in (JFNE i rc, w''')
   | true :: false :: false :: false :: w' =>
       let (i, w'') := read_n w' in let (rc, w''') := read_n w'' in (JBNE i rc, w''')
   | true :: true :: false :: false :: w' =>
       let (rt, w'') := read_n w' in (RET rt, w'')
   | _ => (NOP, nil)
   end.
-
-
-
 
 Fixpoint str_to_limp (w: bitstr) (n: nat): L_prog :=
   match n with
@@ -147,3 +142,7 @@ Fixpoint str_to_limp (w: bitstr) (n: nat): L_prog :=
   end.
 
 Definition nat_to_limp (n: nat) := str_to_limp (nat_to_str n) (length (nat_to_str n)).
+
+Lemma nat_to_limp_onto: forall p, exists n, p = nat_to_limp n.
+Proof.
+Admitted.

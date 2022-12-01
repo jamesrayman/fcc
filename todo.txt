@@ -1,20 +1,29 @@
 vim: nospell
 
-CIMP: IMP with oracles
-CALL f rt ra
 
-VIMP: IMP with named variables
+Paper
 
-EIMP: IMP with expressions
-
-IMP: discussed in class
-
-
-Write the skeleton, prove everything with Admitted.
-
-0-HALT implies SIM
-
-Enumerate decidable languages as g_i
-IMP^0-HALT can compute g_i
-
-Diagonalize
+Pop science explanation is wrong
+Already achieved
+Just for practice
+Failed attempts
+    Non-determinism
+    Using Turing machines
+Proof outline
+    LIMP and encoding
+    Composition Lemma and CIMP
+    HALT_0 implies SIM, HALT_ALL
+    Define C_i, the i-th computable function
+    SIM (LDI 0 x :: to_limp (COMP i)) = C_i x
+    HALT_0 implies COMP i is computable
+    No-input lemma
+    G i := 1 + SIM (LDI 0 i :: to_limp (COMP i)) := 1 + C_i i
+    C_j = G
+    G j = 1 + G j
+Tricky parts
+    Encoding programs
+    Proving nontrivial equivalences
+    Picking a base language
+Limitations of Coq
+    `intuition` isn't good enough
+    Fixpoint definitions are not good enough

@@ -44,6 +44,7 @@ Section Computation.
   Lemma steps_eval:
     forall (s s': state) (n: nat), steps s s' -> (eval s n <-> eval s' n).
   Proof.
+    clear encode_input.
     intros.
     induction H.
     - intuition.
@@ -90,7 +91,10 @@ Section Computation.
   Qed.
 
   Definition evaluates (f: function) :=
-    forall (n: nat), halts (encode_input n) /\ (eval (encode_input n) (f n)).
+    forall (n: nat), eval (encode_input n) (f n).
+
+  Definition always_halts :=
+    exists f, evaluates f.
 
   Lemma evaluation_unique: forall (f f': function), evaluates f -> evaluates f' -> f = f'.
   Proof.
@@ -100,8 +104,7 @@ Section Computation.
     unfold evaluates in *.
     specialize H with n.
     specialize H0 with n.
-    destruct H, H0.
-    eapply eval_unique; eauto.
+    apply eval_unique with (s := encode_input n); auto.
   Qed.
 
   Fixpoint simulate (s: state) (n: nat): option nat :=
@@ -113,6 +116,51 @@ Section Computation.
              end
     end.
 
-  (* simulate correct *)
 End Computation.
 
+Lemma lockstep' (A B: Type)
+  (next_A: transition A) (next_B: transition B) (sim: A -> B):
+  forall t initial n', runtime next_A initial t ->
+  (forall a a', next_A a = inl a' -> steps next_B (sim a) (sim a')) ->
+  (forall a x, next_A a = inr x -> next_B (sim a) = inr x) ->
+  eval next_A initial n' -> eval next_B (sim initial) n'.
+Proof.
+  induction t.
+  - intros.
+    inversion H. subst.
+    destruct H3.
+    inversion H2; subst.
+    + constructor. apply H1. auto.
+    + rewrite H4 in H3. inversion H3.
+  - intros.
+    inversion H. subst.
+    remember (H0 initial s' H4) as Hs.
+    remember (steps_eval next_B (sim initial) (sim s') n' Hs) as Hs'.
+    apply Hs'.
+    apply IHt; auto.
+    assert (steps next_A initial s').
+    + apply stepsOnce with (s' := initial); auto.
+      constructor.
+    + remember (steps_eval next_A initial s' n' H3).
+      apply i.
+      auto.
+Qed.
+
+Theorem lockstep (A B: Type) (f: function)
+  (next_A: transition A) (next_B: transition B)
+  (enc_A: nat -> A) (enc_B: nat -> B) (sim: A -> B):
+  (forall n, sim (enc_A n) = enc_B n) ->
+  (forall a a', next_A a = inl a' -> steps next_B (sim a) (sim a')) ->
+  (forall a x, next_A a = inr x -> next_B (sim a) = inr x) ->
+  evaluates next_A enc_A f ->  evaluates next_B enc_B f.
+Proof.
+  unfold evaluates.
+  intros.
+  rewrite <- H.
+  specialize H2 with n.
+  assert (halts' next_A (enc_A n)).
+  - apply halts_iff_halts'.
+    exists (f n). auto.
+  - destruct H3 as [t].
+    apply lockstep' with (next_A := next_A) (t := t); auto.
+Qed.
